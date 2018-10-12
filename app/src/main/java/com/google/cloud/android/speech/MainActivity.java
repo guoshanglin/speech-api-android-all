@@ -32,12 +32,14 @@ import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
 import android.text.TextUtils;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import java.util.ArrayList;
 
@@ -95,9 +97,10 @@ public class MainActivity extends AppCompatActivity implements MessageDialogFrag
     private RecyclerView mRecyclerView;
 
     // HTTP
-    private static final String URL = "http://ca2e49b4.ngrok.io";
-    private static AsyncHttpClient client = new AsyncHttpClient();
-    private static RequestParams params = new RequestParams();
+    //private static final String URL = "http://160.39.174.178:80";
+    private static final String URL = "http://192.168.2.105:8000/";
+    AsyncHttpClient client = new AsyncHttpClient();
+    RequestParams params = new RequestParams();
 
     private final ServiceConnection mServiceConnection = new ServiceConnection() {
 
@@ -133,20 +136,7 @@ public class MainActivity extends AppCompatActivity implements MessageDialogFrag
         mRecyclerView.setLayoutManager(new LinearLayoutManager(this));
         final ArrayList<String> results = savedInstanceState == null ? null :
                 savedInstanceState.getStringArrayList(STATE_RESULTS);
-        mAdapter = new ResultAdapter(results); //"results" is the returned final result
-        params.put("1", results);
-
-        client.get(URL, params, new AsyncHttpResponseHandler() {
-            @Override
-            public void onSuccess(int statusCode, Header[] headers, byte[] responseBody) {
-
-            }
-
-            @Override
-            public void onFailure(int statusCode, Header[] headers, byte[] responseBody, Throwable error) {
-
-            }
-        });
+        mAdapter = new ResultAdapter(results);
         mRecyclerView.setAdapter(mAdapter);
     }
 
@@ -262,6 +252,20 @@ public class MainActivity extends AppCompatActivity implements MessageDialogFrag
                                 if (isFinal) {
                                     mText.setText(null);
                                     mAdapter.addResult(text);
+                                    //Toast.makeText(MainActivity.this,text,Toast.LENGTH_SHORT).show(); //"text" is the returned final result
+                                    params.put("data", text);
+
+                                    client.get(URL, params, new TextHttpResponseHandler() {
+                                        @Override
+                                        public void onSuccess(int statusCode, Header[] headers, String res) {
+                                            Toast.makeText(MainActivity.this,"HTTP request success",Toast.LENGTH_SHORT).show();
+                                        }
+
+                                        @Override
+                                        public void onFailure(int statusCode, Header[] headers, String res, Throwable t){
+                                            Toast.makeText(MainActivity.this,"HTTP request error",Toast.LENGTH_SHORT).show();
+                                        }
+                                    });
                                     mRecyclerView.smoothScrollToPosition(0);
                                 } else {
                                     mText.setText(text);
