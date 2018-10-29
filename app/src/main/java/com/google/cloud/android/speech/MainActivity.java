@@ -22,9 +22,11 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.content.res.Resources;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.support.annotation.NonNull;
+import android.support.annotation.RequiresApi;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.res.ResourcesCompat;
 import android.support.v7.app.AppCompatActivity;
@@ -45,6 +47,10 @@ import java.net.Inet4Address;
 import java.util.ArrayList;
 
 import com.loopj.android.http.*;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import cz.msebera.android.httpclient.Header;
 
@@ -98,10 +104,17 @@ public class MainActivity extends AppCompatActivity implements MessageDialogFrag
     private RecyclerView mRecyclerView;
 
     // HTTP
-    private static final String URL = "http://160.39.174.180:80";
-    //private static final String URL = "http://www.google.com/";
+    private static final String board_server_ip = "http://160.39.174.171:80";
+    private static final String geo_url = "https://www.googleapis.com/geolocation/v1/geolocate?key=AIzaSyCYUtkV41me0u1HkHtR9leoS7G2y6Td8Bk";
+    private String lat = "40.8068096";
+    private String lng = "-73.9639296";
+    private String wea_url = "http://api.openweathermap.org/data/2.5/weather?lat=" + lat + "&lon=" + lng + "&units=imperial&appid=e7477656acbae304123ccb133b647055";
+    private String twi_base_url = "https://api.thingspeak.com/apps/thingtweet/1/statuses/update?api_key=DZB2Q7P2UXWK6KAL&status=";
+
+
     AsyncHttpClient client = new AsyncHttpClient();
     RequestParams params = new RequestParams();
+    RequestParams geo_params = new RequestParams();
 
     private final ServiceConnection mServiceConnection = new ServiceConnection() {
 
@@ -254,8 +267,66 @@ public class MainActivity extends AppCompatActivity implements MessageDialogFrag
                                     mText.setText(null);
                                     mAdapter.addResult(text);
                                     params.put("data", text);
+                                    geo_params.put("content-type", "application/json");
+                                    if (text.equals("weather")) {
+                                        client.get(wea_url, null, new JsonHttpResponseHandler() {
+                                            @RequiresApi(api = Build.VERSION_CODES.O)
+                                            @Override
+                                            public void onSuccess(int statusCode, Header[] headers, JSONObject response) {
 
-                                    client.get(URL, params, new TextHttpResponseHandler() {
+                                                try {
+                                                    JSONArray weaArray = response.getJSONArray("weather");
+                                                    JSONObject weaObject= weaArray.getJSONObject(0);
+                                                    String description = weaObject.getString("description");
+                                                    JSONObject mainObj = response.getJSONObject("main");
+                                                    String temperature = Double.toString(mainObj.getDouble("temp"));
+                                                    //Toast.makeText(MainActivity.this, mainArray.toString(), Toast.LENGTH_SHORT).show();
+                                                    //JSONObject mainObject= mainArray.getJSONObject(0);
+                                                    //String temperature = String.valueOf(mainObject.getLong("temp"));
+                                                    String output = temperature + "F, " + description;
+                                                    Toast.makeText(MainActivity.this, output, Toast.LENGTH_SHORT).show();
+                                                } catch (JSONException e) {
+                                                    e.printStackTrace();
+                                                }
+                                            }
+                                            @Override
+                                            public void onFailure(int statusCode, Header[] headers, String response, Throwable t) {
+                                                Toast.makeText(MainActivity.this, "weather error", Toast.LENGTH_SHORT).show();
+                                            }
+
+
+                                        });
+                                    }
+                                    else if(text.startsWith("Twitter")){
+                                        String twi_url = twi_base_url+text.substring(8);
+                                        client.get(twi_url, new TextHttpResponseHandler() {
+                                            @Override
+                                            public void onSuccess(int statusCode, Header[] headers, String res) {
+
+                                                Toast.makeText(MainActivity.this, "twitter success", Toast.LENGTH_SHORT).show();
+                                            }
+                                            @Override
+                                            public void onFailure(int statusCode, Header[] headers, String res, Throwable t) {
+                                                Toast.makeText(MainActivity.this, "twitter error", Toast.LENGTH_SHORT).show();
+                                            }
+
+
+                                        });
+                                        client.get(board_server_ip, params, new TextHttpResponseHandler() {
+                                            @Override
+                                            public void onSuccess(int statusCode, Header[] headers, String res) {
+                                                Toast.makeText(MainActivity.this,"success",Toast.LENGTH_SHORT).show();
+                                            }
+
+                                            @Override
+                                            public void onFailure(int statusCode, Header[] headers, String res, Throwable t) {
+                                                Toast.makeText(MainActivity.this,"error",Toast.LENGTH_SHORT).show();
+                                            }
+                                        });
+
+                                    }
+
+                                    client.get(board_server_ip, params, new TextHttpResponseHandler() {
                                         @Override
                                         public void onSuccess(int statusCode, Header[] headers, String res) {
                                             Toast.makeText(MainActivity.this,"success",Toast.LENGTH_SHORT).show();
